@@ -3,19 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TasteTrek (Free Version)</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <title>TasteTrek</title>
+  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet" />
   <style>
-    body, html {
+    html, body {
       margin: 0;
       padding: 0;
       height: 100%;
-      font-family: sans-serif;
+      font-family: Arial, sans-serif;
     }
 
     #map {
-      height: 100vh;
+      height: 100%;
       width: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
     }
 
     #form-container {
@@ -25,98 +28,87 @@
       background: white;
       padding: 10px;
       border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
       z-index: 1000;
+      width: 250px;
     }
 
-    #toggle-btn {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: white;
-      border: none;
-      font-size: 24px;
-      padding: 5px 10px;
+    #form-container input {
+      width: 100%;
+      margin-bottom: 5px;
+      padding: 6px;
+    }
+
+    #form-container button {
+      width: 100%;
+      padding: 6px;
+      margin-top: 4px;
       cursor: pointer;
-      z-index: 1100;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      border-radius: 5px;
     }
 
-    #form-container.hidden {
-      display: none;
-    }
-
-    input {
-      display: block;
-      margin: 5px 0;
-      width: 200px;
-      padding: 5px;
-    }
-
-    button {
-      padding: 5px 10px;
+    .leaflet-popup-content-wrapper {
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-
-  <button id="toggle-btn">☰</button>
-
   <div id="form-container">
     <input type="text" id="dish" placeholder="Dish Name" />
-    <button onclick="enableMarking()">Click to Add Marker</button>
+    <input type="text" id="location" placeholder="Location Description" />
+    <button onclick="enableClick()">Click on Map to Add</button>
+    <button onclick="deleteLastMarker()">Delete Last Marker</button>
   </div>
 
   <div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([28.6139, 77.209], 5);
-
-    // Remove zoom buttons ( + / - )
-    map.zoomControl.remove();
+    const map = L.map('map').setView([20.5937, 78.9629], 5); // Center on India
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
+      attribution: '© OpenStreetMap contributors',
     }).addTo(map);
 
-    const toggleBtn = document.getElementById("toggle-btn");
-    const formContainer = document.getElementById("form-container");
+    let clickEnabled = false;
+    const markers = [];
 
-    toggleBtn.addEventListener("click", () => {
-      formContainer.classList.toggle("hidden");
-    });
+    function enableClick() {
+      clickEnabled = true;
+      alert('Click on the map to add marker!');
+    }
 
-    let markingEnabled = false;
+    map.on('click', function (e) {
+      if (!clickEnabled) return;
 
-    function enableMarking() {
-      const dish = document.getElementById("dish").value;
-      if (!dish) {
-        alert("Please enter the dish name first!");
+      const dish = document.getElementById("dish").value.trim();
+      const location = document.getElementById("location").value.trim();
+
+      if (!dish || !location) {
+        alert("Please enter both dish name and location.");
         return;
       }
 
-      markingEnabled = true;
-      alert("Click anywhere on the map to mark the dish location.");
-    }
-
-    map.on("click", function (e) {
-      if (!markingEnabled) return;
-
-      const dish = document.getElementById("dish").value;
-      if (!dish) return;
-
-      L.marker(e.latlng)
+      const marker = L.marker(e.latlng)
         .addTo(map)
-        .bindPopup(`<b>${dish}</b><br>Lat: ${e.latlng.lat.toFixed(2)}<br>Lng: ${e.latlng.lng.toFixed(2)}`)
+        .bindPopup(`<b>${dish}</b><br>${location}`)
         .openPopup();
 
-      // Reset
-      document.getElementById("dish").value = "";
-      markingEnabled = false;
-    });
-  </script>
+      markers.push(marker);
 
+      document.getElementById("dish").value = "";
+      document.getElementById("location").value = "";
+
+      clickEnabled = false;
+    });
+
+    function deleteLastMarker() {
+      if (markers.length === 0) {
+        alert("No markers to delete.");
+        return;
+      }
+      const last = markers.pop();
+      map.removeLayer(last);
+    }
+  </script>
 </body>
 </html>
