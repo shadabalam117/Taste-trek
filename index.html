@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Taste Trek</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background: #ff5722;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    #map {
+      flex: 1;
+    }
+    .form-container {
+      position: absolute;
+      top: 70px;
+      left: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+    .form-container input, .form-container textarea, .form-container select {
+      width: 100%;
+      margin: 5px 0;
+      padding: 5px;
+    }
+    .form-container button {
+      background: #ff5722;
+      color: white;
+      padding: 6px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🍜 Taste Trek - Discover Dishes Around the World</h1>
+  </header>
+  <div id="map"></div>
+  <div class="form-container">
+    <input type="text" id="dish" placeholder="Dish Name" required />
+    <textarea id="desc" placeholder="Description"></textarea>
+    <select id="category">
+      <option value="">Category</option>
+      <option value="Spicy">Spicy</option>
+      <option value="Sweet">Sweet</option>
+      <option value="Street Food">Street Food</option>
+      <option value="Fine Dining">Fine Dining</option>
+    </select>
+    <button id="addPin">Add to Map</button>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([20.5937, 78.9629], 4); // Centered on India
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let currentLatLng = null;
+    map.on('click', (e) => {
+      currentLatLng = e.latlng;
+      alert('Location selected! Now fill the form and click Add to Map.');
+    });
+
+    function savePins(pins) {
+      localStorage.setItem('tastePins', JSON.stringify(pins));
+    }
+
+    function loadPins() {
+      return JSON.parse(localStorage.getItem('tastePins')) || [];
+    }
+
+    function addMarker({lat, lng, dish, desc, category}) {
+      const marker = L.marker([lat, lng]).addTo(map);
+      marker.bindPopup(`<strong>${dish}</strong><br>${desc}<br><em>${category}</em>`);
+    }
+
+    // Load stored pins
+    const storedPins = loadPins();
+    storedPins.forEach(addMarker);
+
+    document.getElementById('addPin').addEventListener('click', () => {
+      if (!currentLatLng) return alert('Click on the map to select a location first.');
+      const dish = document.getElementById('dish').value.trim();
+      const desc = document.getElementById('desc').value.trim();
+      const category = document.getElementById('category').value;
+      if (!dish) return alert('Dish name required.');
+      const pin = {
+        lat: currentLatLng.lat,
+        lng: currentLatLng.lng,
+        dish,
+        desc,
+        category
+      };
+      storedPins.push(pin);
+      savePins(storedPins);
+      addMarker(pin);
+      alert('Dish added to Taste Trek!');
+      document.getElementById('dish').value = '';
+      document.getElementById('desc').value = '';
+      document.getElementById('category').value = '';
+    });
+  </script>
+</body>
+</html>
