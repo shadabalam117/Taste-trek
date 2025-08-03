@@ -1,149 +1,45 @@
-<!DOCTYPE html><html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Taste Trek</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-      body {
-        margin: 0;
-        font-family: sans-serif;
-        overflow: hidden;
-      }
-      #map {
-        height: 100vh;
-        width: 100vw;
-      }
-      #panel {
-        position: absolute;
-        top: 0;
-        left: 0;
-        height: 100vh;
-        width: 280px;
-        max-width: 100%;
-        background-color: #f7f7f7;
-        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
-        z-index: 1000;
-        padding: 10px;
-        box-sizing: border-box;
-        overflow-y: auto;
-        transition: transform 0.3s ease;
-      }
-      #panel.hidden {
-        transform: translateX(-100%);
-      }
-      #toggleButton {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        z-index: 1100;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        padding: 8px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-      }
-      .leaflet-control-zoom {
-        top: 80px !important; /* Push zoom buttons lower */
-        right: 10px !important;
-      }
-      label, select, input, button {
-        display: block;
-        margin-bottom: 8px;
-        width: 100%;
-        box-sizing: border-box;
-      }
-      ul {
-        list-style: none;
-        padding: 0;
-      }
-      li {
-        margin-bottom: 10px;
-        background: #e2e2e2;
-        padding: 6px;
-        border-radius: 4px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      li span {
-        flex-grow: 1;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="map"></div>
-    <div id="panel">
-      <h2>Taste Trek</h2>
-      <label for="dish">Dish Name:</label>
-      <input type="text" id="dish" /><label for="category">Category:</label>
-  <select id="category">
-    <option value="">Select</option>
-    <option value="Street Food">Street Food</option>
-    <option value="Traditional">Traditional</option>
-    <option value="Dessert">Dessert</option>
-    <option value="Modern">Modern</option>
-  </select>
+import { useEffect, useRef, useState } from "react"; import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet"; import L from "leaflet"; import "leaflet/dist/leaflet.css";
 
-  <button onclick="addDish()">Add Dish</button>
-  <h3>Dish List</h3>
-  <ul id="dishList"></ul>
+const defaultPosition = [20.5937, 78.9629]; // India center
+
+const DishMarker = ({ dish, onClick }) => ( <Marker position={[dish.lat, dish.lng]}> <Popup> <strong>{dish.name}</strong> <br /> {dish.description} </Popup> </Marker> );
+
+const AddDish = ({ onAddDish }) => { const [name, setName] = useState(""); const [description, setDescription] = useState(""); const [latLng, setLatLng] = useState(null); const [dishes, setDishes] = useState([]);
+
+useMapEvents({ click(e) { setLatLng(e.latlng); }, });
+
+const handleAdd = () => { if (name && description && latLng) { const newDish = { name, description, lat: latLng.lat, lng: latLng.lng, }; onAddDish(newDish); setDishes([...dishes, newDish]); setName(""); setDescription(""); setLatLng(null); } };
+
+return ( <div className="flex flex-col gap-2"> <input className="p-2 rounded border" placeholder="Dish Name" value={name} onChange={(e) => setName(e.target.value)} /> <textarea className="p-2 rounded border" placeholder="Dish Description" value={description} onChange={(e) => setDescription(e.target.value)} /> <button
+onClick={handleAdd}
+className="bg-green-500 text-white py-1 px-3 rounded hover:bg-green-600"
+> Add Dish </button> {latLng && ( <p className="text-sm text-gray-500"> Selected location: ({latLng.lat.toFixed(3)}, {latLng.lng.toFixed(3)}) </p> )} </div> ); };
+
+export default function TasteTrekMap() { const [dishes, setDishes] = useState([]); const [panelOpen, setPanelOpen] = useState(true);
+
+const handleAddDish = (dish) => { setDishes([...dishes, dish]); };
+
+return ( <div className="relative w-full h-screen"> <MapContainer center={defaultPosition} zoom={4} className="w-full h-full z-0"> <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" /> {dishes.map((dish, index) => ( <DishMarker key={index} dish={dish} /> ))} <AddDish onAddDish={handleAddDish} /> </MapContainer>
+
+{/* Toggle Button */}
+  <button
+    onClick={() => setPanelOpen(!panelOpen)}
+    className="absolute bottom-4 left-4 z-10 bg-white p-2 rounded-full shadow hover:bg-gray-200"
+  >
+    ☰
+  </button>
+
+  {/* Panel */}
+  {panelOpen && (
+    <div className="absolute top-4 left-4 z-10 bg-white shadow-lg p-4 rounded-xl w-[280px] max-h-[90vh] overflow-y-auto">
+      <h2 className="text-xl font-bold mb-2">🍜 TasteTrek</h2>
+      <p className="text-sm text-gray-600 mb-4">
+        Click on the map to select a location and add a dish.
+      </p>
+      <AddDish onAddDish={handleAddDish} />
+    </div>
+  )}
 </div>
-<button id="toggleButton" onclick="togglePanel()">Hide Panel</button>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-  const map = L.map('map').setView([20.5937, 78.9629], 4);
+); }
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-  }).addTo(map);
-
-  const panel = document.getElementById('panel');
-  const toggleButton = document.getElementById('toggleButton');
-  let markers = [];
-
-  function togglePanel() {
-    panel.classList.toggle('hidden');
-    toggleButton.innerText = panel.classList.contains('hidden') ? 'Show Panel' : 'Hide Panel';
-  }
-
-  map.on('click', function (e) {
-    const dishName = document.getElementById('dish').value;
-    const category = document.getElementById('category').value;
-
-    if (!dishName || !category) {
-      alert('Please enter both dish name and category');
-      return;
-    }
-
-    const marker = L.marker(e.latlng).addTo(map);
-    marker.bindPopup(`<b>${dishName}</b><br>${category}`).openPopup();
-
-    markers.push({ marker, dishName });
-
-    const li = document.createElement('li');
-    const span = document.createElement('span');
-    span.innerText = `${dishName} (${category})`;
-
-    const removeBtn = document.createElement('button');
-    removeBtn.innerText = 'Remove';
-    removeBtn.onclick = function () {
-      map.removeLayer(marker);
-      li.remove();
-    };
-
-    li.appendChild(span);
-    li.appendChild(removeBtn);
-
-    document.getElementById('dishList').appendChild(li);
-
-    document.getElementById('dish').value = '';
-    document.getElementById('category').value = '';
-  });
-</script>
-
-  </body>
-</html>
