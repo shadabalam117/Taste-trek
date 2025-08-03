@@ -2,119 +2,119 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TasteTrek</title>
-
-  <!-- Leaflet CSS & JS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TasteTrek (Free Version)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    html, body {
-      height: 100%;
+    body, html {
       margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: sans-serif;
     }
 
     #map {
-      height: 100%;
+      height: 100vh;
       width: 100%;
     }
 
-    #panel {
+    #form-container {
       position: absolute;
       top: 10px;
-      left: 10px;
-      z-index: 999;
+      right: 10px;
       background: white;
       padding: 10px;
       border-radius: 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      z-index: 1000;
     }
 
-    #toggle {
+    #toggle-btn {
       position: absolute;
       top: 10px;
-      left: 10px;
-      z-index: 1000;
+      right: 10px;
       background: white;
       border: none;
-      padding: 8px;
-      border-radius: 5px;
+      font-size: 24px;
+      padding: 5px 10px;
       cursor: pointer;
+      z-index: 1100;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      border-radius: 5px;
     }
 
-    #toggle.hidden {
-      left: 10px;
-      top: 10px;
-    }
-
-    .hidden {
+    #form-container.hidden {
       display: none;
     }
 
-    #toggle::before {
-      content: "☰";
-      font-size: 20px;
+    input {
+      display: block;
+      margin: 5px 0;
+      width: 200px;
+      padding: 5px;
+    }
+
+    button {
+      padding: 5px 10px;
     }
   </style>
 </head>
 <body>
 
-  <button id="toggle"></button>
+  <button id="toggle-btn">☰</button>
 
-  <div id="panel">
-    <input type="text" id="dish" placeholder="Dish Name"/><br/>
-    <input type="text" id="location" placeholder="Location"/><br/>
-    <button onclick="addMarker()">Add Dish</button>
+  <div id="form-container">
+    <input type="text" id="dish" placeholder="Dish Name" />
+    <button onclick="enableMarking()">Click to Add Marker</button>
   </div>
 
   <div id="map"></div>
 
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([28.6139, 77.2090], 5); // India center
+    const map = L.map('map').setView([28.6139, 77.209], 5);
 
-    // Free OpenStreetMap tiles
+    // Remove zoom buttons ( + / - )
+    map.zoomControl.remove();
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap'
+      maxZoom: 18,
     }).addTo(map);
 
-    // Add marker function
-    function addMarker() {
-      const dish = document.getElementById('dish').value.trim();
-      const location = document.getElementById('location').value.trim();
+    const toggleBtn = document.getElementById("toggle-btn");
+    const formContainer = document.getElementById("form-container");
 
-      if (!dish || !location) {
-        alert("Please enter both dish and location.");
+    toggleBtn.addEventListener("click", () => {
+      formContainer.classList.toggle("hidden");
+    });
+
+    let markingEnabled = false;
+
+    function enableMarking() {
+      const dish = document.getElementById("dish").value;
+      if (!dish) {
+        alert("Please enter the dish name first!");
         return;
       }
 
-      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.length === 0) {
-            alert("Location not found!");
-            return;
-          }
-
-          const lat = data[0].lat;
-          const lon = data[0].lon;
-
-          L.marker([lat, lon])
-            .addTo(map)
-            .bindPopup(`<b>${dish}</b><br>${location}`)
-            .openPopup();
-
-          map.setView([lat, lon], 10);
-          document.getElementById('dish').value = "";
-          document.getElementById('location').value = "";
-        });
+      markingEnabled = true;
+      alert("Click anywhere on the map to mark the dish location.");
     }
 
-    // Show/hide panel toggle
-    const panel = document.getElementById('panel');
-    const toggle = document.getElementById('toggle');
-    toggle.addEventListener('click', () => {
-      panel.classList.toggle('hidden');
+    map.on("click", function (e) {
+      if (!markingEnabled) return;
+
+      const dish = document.getElementById("dish").value;
+      if (!dish) return;
+
+      L.marker(e.latlng)
+        .addTo(map)
+        .bindPopup(`<b>${dish}</b><br>Lat: ${e.latlng.lat.toFixed(2)}<br>Lng: ${e.latlng.lng.toFixed(2)}`)
+        .openPopup();
+
+      // Reset
+      document.getElementById("dish").value = "";
+      markingEnabled = false;
     });
   </script>
 
