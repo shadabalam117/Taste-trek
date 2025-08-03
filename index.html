@@ -2,138 +2,163 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TasteTrek</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <title>Taste Trek</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
+      height: 100%;
       font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-    #map {
-      flex: 1;
-    }
-    #formContainer {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
-      z-index: 1000;
-    }
-    #formContainer input,
-    #formContainer select,
-    #formContainer button {
-      display: block;
-      margin: 5px 0;
-      width: 100%;
-      padding: 6px;
-      font-size: 14px;
-    }
-    #categoryFilter {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: white;
-      padding: 6px;
-      border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
-      z-index: 1000;
-    }
-    .leaflet-popup-content img {
-      max-width: 100px;
-      display: block;
-      margin-top: 5px;
-    }
+    }#map {
+  height: 100%;
+  width: 100%;
+}
+
+.sidebar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 300px;
+  height: 100%;
+  background: #f9f9f9;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+  overflow-y: auto;
+  padding: 20px;
+  transition: transform 0.3s ease-in-out;
+}
+
+.sidebar.hidden {
+  transform: translateX(100%);
+}
+
+.toggle-btn {
+  position: absolute;
+  top: 10px;
+  right: 310px;
+  z-index: 1000;
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+}
+
+input, select {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+}
+
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+li {
+  margin-bottom: 10px;
+}
+
+.delete-btn {
+  color: red;
+  cursor: pointer;
+}
+
   </style>
 </head>
 <body>
-  <div id="formContainer">
-    <input type="text" id="dishName" placeholder="Dish Name" />
-    <input type="text" id="dishImage" placeholder="Image URL (optional)" />
-    <select id="dishCategory">
-      <option value="">Select Category</option>
-      <option value="Spicy">Spicy</option>
-      <option value="Sweet">Sweet</option>
-      <option value="Savory">Savory</option>
-      <option value="Fried">Fried</option>
-      <option value="Dessert">Dessert</option>
-    </select>
-    <input type="number" id="dishRating" placeholder="Rating (1-5)" min="1" max="5" />
+  <div id="map"></div>
+  <button class="toggle-btn" onclick="toggleSidebar()">Toggle Form</button>
+  <div class="sidebar" id="sidebar">
+    <h2>Add Dish</h2>
+    <div class="form-group">
+      <label for="dishName">Dish Name</label>
+      <input type="text" id="dishName">
+    </div>
+    <div class="form-group">
+      <label for="category">Category</label>
+      <select id="category">
+        <option value="Snacks">Snacks</option>
+        <option value="Main Course">Main Course</option>
+        <option value="Dessert">Dessert</option>
+        <option value="Beverage">Beverage</option>
+      </select>
+    </div>
     <button onclick="addDish()">Add Dish</button>
-  </div>  <div id="categoryFilter">
-    <select id="filterCategory" onchange="filterMarkers()">
-      <option value="">All</option>
-      <option value="Spicy">Spicy</option>
-      <option value="Sweet">Sweet</option>
-      <option value="Savory">Savory</option>
-      <option value="Fried">Fried</option>
-      <option value="Dessert">Dessert</option>
-    </select>
-  </div>  <div id="map"></div>  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>  <script>
-    const map = L.map('map').setView([20.5937, 78.9629], 5); // Default to India
+    <h3>Added Dishes</h3>
+    <ul id="dishList"></ul>
+  </div>  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>  <script>
+    const map = L.map('map').setView([20.5937, 78.9629], 4);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    let markers = [];
+    const sidebar = document.getElementById("sidebar");
+    const dishList = document.getElementById("dishList");
 
-    function addDish() {
-      const name = document.getElementById('dishName').value.trim();
-      const image = document.getElementById('dishImage').value.trim();
-      const category = document.getElementById('dishCategory').value;
-      const rating = document.getElementById('dishRating').value;
+    let currentLatLng = null;
+    let dishes = JSON.parse(localStorage.getItem('dishes')) || [];
 
-      if (!name || !category || !rating || !mapClickCoords) {
-        alert("Please fill in all required fields and click on the map.");
-        return;
-      }
-
-      const marker = L.marker(mapClickCoords).addTo(map);
-      const popupContent = `
-        <b>${name}</b><br>
-        Category: ${category}<br>
-        Rating: ${rating}/5
-        ${image ? `<br><img src="${image}" alt="Dish Image"/>` : ''}
-        <br><button onclick="removeMarker(${markers.length})">Remove</button>
-      `;
-      marker.bindPopup(popupContent);
-      marker.category = category;
-      markers.push(marker);
-
-      document.getElementById('dishName').value = '';
-      document.getElementById('dishImage').value = '';
-      document.getElementById('dishCategory').value = '';
-      document.getElementById('dishRating').value = '';
+    function toggleSidebar() {
+      sidebar.classList.toggle('hidden');
     }
 
-    function filterMarkers() {
-      const selected = document.getElementById('filterCategory').value;
-      markers.forEach(marker => {
-        if (!selected || marker.category === selected) {
-          marker.addTo(map);
-        } else {
-          map.removeLayer(marker);
-        }
+    map.on('click', async function(e) {
+      currentLatLng = e.latlng;
+      if (sidebar.classList.contains('hidden')) toggleSidebar();
+    });
+
+    function addDish() {
+      const name = document.getElementById("dishName").value;
+      const category = document.getElementById("category").value;
+      if (!name || !currentLatLng) return;
+
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${currentLatLng.lat}&lon=${currentLatLng.lng}&format=json`)
+        .then(response => response.json())
+        .then(data => {
+          const country = data.address.country || "Unknown";
+          const dish = { name, category, country, lat: currentLatLng.lat, lng: currentLatLng.lng };
+          dishes.push(dish);
+          localStorage.setItem('dishes', JSON.stringify(dishes));
+          renderDishes();
+        });
+    }
+
+    function renderDishes() {
+      dishList.innerHTML = '';
+      dishes.forEach((dish, index) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${dish.name}</strong> (${dish.category}) in ${dish.country} <span class='delete-btn' onclick='deleteDish(${index})'>[Delete]</span>`;
+        dishList.appendChild(li);
+
+        const marker = L.marker([dish.lat, dish.lng]).addTo(map);
+        marker.bindPopup(`<b>${dish.name}</b><br>${dish.category}<br>${dish.country}`);
       });
     }
 
-    function removeMarker(index) {
-      if (markers[index]) {
-        map.removeLayer(markers[index]);
-        markers[index] = null;
-      }
+    function deleteDish(index) {
+      dishes.splice(index, 1);
+      localStorage.setItem('dishes', JSON.stringify(dishes));
+      map.eachLayer(layer => {
+        if (layer instanceof L.Marker) map.removeLayer(layer);
+      });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+      renderDishes();
     }
 
-    let mapClickCoords = null;
-    map.on('click', function (e) {
-      mapClickCoords = e.latlng;
-      alert("Location selected! Now fill the form to add a dish.");
-    });
+    renderDishes();
   </script></body>
 </html>
