@@ -2,154 +2,138 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Taste Trek</title>
+  <title>TasteTrek</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    body, html {
+    body {
       margin: 0;
-      padding: 0;
-      height: 100%;
-      font-family: sans-serif;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
     #map {
-      height: 100%;
-      width: 100%;
+      flex: 1;
     }
-    #sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 280px;
-      height: 100%;
-      background: white;
-      z-index: 999;
-      padding: 10px;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.2);
-      transform: translateX(-100%);
-      transition: transform 0.3s ease;
-    }
-    #sidebar.active {
-      transform: translateX(0);
-    }
-    #toggleSidebar {
-      position: fixed;
+    #formContainer {
+      position: absolute;
       top: 10px;
       left: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
       z-index: 1000;
-      padding: 6px 12px;
-      background: #4285f4;
-      color: white;
-      border: none;
-      border-radius: 4px;
     }
-    label, select, input, button {
+    #formContainer input,
+    #formContainer select,
+    #formContainer button {
       display: block;
+      margin: 5px 0;
       width: 100%;
-      margin-bottom: 10px;
+      padding: 6px;
+      font-size: 14px;
+    }
+    #categoryFilter {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: white;
+      padding: 6px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+    }
+    .leaflet-popup-content img {
+      max-width: 100px;
+      display: block;
+      margin-top: 5px;
     }
   </style>
 </head>
 <body>
-  <button id="toggleSidebar">☰</button>
-  <div id="sidebar">
-    <h2>Add Dish</h2>
-    <form id="dishForm">
-      <label>Dish Name</label>
-      <input type="text" id="dishName" required /><label>Category</label>
-  <select id="category" required>
-    <option value="">Choose...</option>
-    <option value="Street Food">Street Food</option>
-    <option value="Fine Dining">Fine Dining</option>
-    <option value="Traditional">Traditional</option>
-    <option value="Fast Food">Fast Food</option>
-  </select>
+  <div id="formContainer">
+    <input type="text" id="dishName" placeholder="Dish Name" />
+    <input type="text" id="dishImage" placeholder="Image URL (optional)" />
+    <select id="dishCategory">
+      <option value="">Select Category</option>
+      <option value="Spicy">Spicy</option>
+      <option value="Sweet">Sweet</option>
+      <option value="Savory">Savory</option>
+      <option value="Fried">Fried</option>
+      <option value="Dessert">Dessert</option>
+    </select>
+    <input type="number" id="dishRating" placeholder="Rating (1-5)" min="1" max="5" />
+    <button onclick="addDish()">Add Dish</button>
+  </div>  <div id="categoryFilter">
+    <select id="filterCategory" onchange="filterMarkers()">
+      <option value="">All</option>
+      <option value="Spicy">Spicy</option>
+      <option value="Sweet">Sweet</option>
+      <option value="Savory">Savory</option>
+      <option value="Fried">Fried</option>
+      <option value="Dessert">Dessert</option>
+    </select>
+  </div>  <div id="map"></div>  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>  <script>
+    const map = L.map('map').setView([20.5937, 78.9629], 5); // Default to India
 
-  <button type="submit">Add Dish</button>
-</form>
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(map);
 
-  </div>
-  <div id="map"></div>  <script>
-    let map;
     let markers = [];
-    let currentLatLng;
 
-    document.getElementById("toggleSidebar").addEventListener("click", () => {
-      document.getElementById("sidebar").classList.toggle("active");
-    });
+    function addDish() {
+      const name = document.getElementById('dishName').value.trim();
+      const image = document.getElementById('dishImage').value.trim();
+      const category = document.getElementById('dishCategory').value;
+      const rating = document.getElementById('dishRating').value;
 
-    function initMap() {
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 20.5937, lng: 78.9629 },
-        zoom: 5,
-        mapTypeId: "roadmap",
-      });
+      if (!name || !category || !rating || !mapClickCoords) {
+        alert("Please fill in all required fields and click on the map.");
+        return;
+      }
 
-      map.addListener("click", (e) => {
-        currentLatLng = e.latLng;
-        document.getElementById("sidebar").classList.add("active");
-      });
+      const marker = L.marker(mapClickCoords).addTo(map);
+      const popupContent = `
+        <b>${name}</b><br>
+        Category: ${category}<br>
+        Rating: ${rating}/5
+        ${image ? `<br><img src="${image}" alt="Dish Image"/>` : ''}
+        <br><button onclick="removeMarker(${markers.length})">Remove</button>
+      `;
+      marker.bindPopup(popupContent);
+      marker.category = category;
+      markers.push(marker);
 
-      const saved = JSON.parse(localStorage.getItem("tastetrek") || "[]");
-      saved.forEach(addMarker);
+      document.getElementById('dishName').value = '';
+      document.getElementById('dishImage').value = '';
+      document.getElementById('dishCategory').value = '';
+      document.getElementById('dishRating').value = '';
     }
 
-    document.getElementById("dishForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const name = document.getElementById("dishName").value;
-      const cat = document.getElementById("category").value;
-      if (!name || !cat || !currentLatLng) return;
-
-      const country = await getCountryName(currentLatLng);
-      const dish = {
-        name,
-        cat,
-        lat: currentLatLng.lat(),
-        lng: currentLatLng.lng(),
-        country
-      };
-      addMarker(dish);
-      saveToLocal();
-      e.target.reset();
-      document.getElementById("sidebar").classList.remove("active");
-    });
-
-    function addMarker(dish) {
-      const marker = new google.maps.Marker({
-        position: { lat: dish.lat, lng: dish.lng },
-        map,
-        title: dish.name
-      });
-
-      const info = new google.maps.InfoWindow({
-        content: `<strong>${dish.name}</strong><br>${dish.cat}<br>${dish.country}<br><button onclick="removeDish(${dish.lat}, ${dish.lng})">Delete</button>`
-      });
-
-      marker.addListener("click", () => info.open(map, marker));
-      markers.push({ marker, dish });
-    }
-
-    function removeDish(lat, lng) {
-      markers = markers.filter(({ marker, dish }) => {
-        if (dish.lat === lat && dish.lng === lng) {
-          marker.setMap(null);
-          return false;
+    function filterMarkers() {
+      const selected = document.getElementById('filterCategory').value;
+      markers.forEach(marker => {
+        if (!selected || marker.category === selected) {
+          marker.addTo(map);
+        } else {
+          map.removeLayer(marker);
         }
-        return true;
       });
-      saveToLocal();
     }
 
-    function saveToLocal() {
-      localStorage.setItem("tastetrek", JSON.stringify(markers.map(({ dish }) => dish)));
+    function removeMarker(index) {
+      if (markers[index]) {
+        map.removeLayer(markers[index]);
+        markers[index] = null;
+      }
     }
 
-    async function getCountryName(latlng) {
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latlng.lat()},${latlng.lng()}&key=YOUR_API_KEY`;
-      const res = await fetch(url);
-      const data = await res.json();
-      const country = data.results[0]?.address_components.find(c => c.types.includes("country"));
-      return country ? country.long_name : "Unknown";
-    }
-  </script>  
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDQfu8shg7gxSuDsmuRXQWVTJ7UcuPYhjM&callback=initMap" async defer></script>
-</body>
+    let mapClickCoords = null;
+    map.on('click', function (e) {
+      mapClickCoords = e.latlng;
+      alert("Location selected! Now fill the form to add a dish.");
+    });
+  </script></body>
 </html>
