@@ -1,131 +1,157 @@
 <!DOCTYPE html>
-<html lang="en">    
-<head>    
-  <meta charset="UTF-8" />    
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />    
-  <title>TasteTrek with Mapbox</title>    
-  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>    
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />    
-  <style>    
-    body, html {    
-      margin: 0;    
-      padding: 0;    
-      height: 100%;    
-      font-family: sans-serif;    
-    }    
-    #map {    
-      position: absolute;    
-      top: 0;    
-      bottom: 0;    
-      width: 100%;    
-    }    
-    #form-container {    
-      position: absolute;    
-      top: 10px;    
-      left: 10px;    
-      background: white;    
-      padding: 10px;    
-      border-radius: 8px;    
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);    
-      z-index: 2;    
-      display: block;    
-    }    
-    .marker-label {    
-      background: white;    
-      padding: 5px;    
-      border-radius: 5px;    
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);    
-    }    
-    #toggle-button {    
-      position: absolute;    
-      bottom: 15px;    
-      left: 15px;    
-      background: white;    
-      border: none;    
-      border-radius: 4px;    
-      padding: 8px 10px;    
-      font-size: 20px;    
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);    
-      z-index: 3;    
-      cursor: pointer;    
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TasteTrek with Mapbox</title>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: sans-serif;
     }
-    .mapboxgl-ctrl-top-right {
-      display: block;
+
+    #map {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 100%;
     }
-    .hide-zoom .mapboxgl-ctrl-top-right {
-      display: none !important;
+
+    #form-container {
+      position: absolute;
+      top: 50px;
+      left: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      z-index: 2;
+      transition: transform 0.3s ease;
     }
-  </style>    
-</head>    
-<body>    
 
-  <div id="form-container">    
-    <input type="text" id="dish" placeholder="Dish Name" />    
-    <input type="text" id="location" placeholder="Location/City" />    
-    <button onclick="addDish()">Add Dish</button>    
-  </div>    
+    .marker-label {
+      background: white;
+      padding: 5px;
+      border-radius: 5px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
 
-  <button id="toggle-button" onclick="togglePanel()">☰</button>    
+    #toggle-panel {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: white;
+      border: none;
+      padding: 8px 10px;
+      border-radius: 5px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      cursor: pointer;
+      z-index: 3;
+    }
 
-  <div id="map"></div>    
+    #toggle-panel:after {
+      content: "☰"; /* Hamburger menu */
+      font-size: 18px;
+    }
 
-  <script>    
-    mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN'; // Replace with your token    
-    
-    const map = new mapboxgl.Map({    
-      container: 'map',    
-      style: 'mapbox://styles/mapbox/streets-v12',    
-      center: [77.209, 28.6139],    
-      zoom: 3    
-    });    
-    
-    map.addControl(new mapboxgl.NavigationControl());    
-    
-    async function getCoordinates(place) {    
-      const res = await fetch(    
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(place)}.json?access_token=${mapboxgl.accessToken}`    
-      );    
-      const data = await res.json();    
-      if (data.features.length > 0) {    
-        return data.features[0].geometry.coordinates;    
-      } else {    
-        alert("Location not found!");    
-        return null;    
-      }    
-    }    
-    
-    async function addDish() {    
-      const dish = document.getElementById("dish").value;    
-      const location = document.getElementById("location").value;    
-      if (!dish || !location) {    
-        alert("Please enter both dish and location.");    
-        return;    
-      }    
-    
-      const coords = await getCoordinates(location);    
-      if (!coords) return;    
-    
-      const el = document.createElement('div');    
-      el.className = 'marker-label';    
-      el.textContent = dish;    
-    
-      new mapboxgl.Marker({ element: el })    
-        .setLngLat(coords)    
-        .setPopup(new mapboxgl.Popup().setHTML(`<b>${dish}</b><br>${location}`))    
-        .addTo(map);    
-    
-      map.flyTo({ center: coords, zoom: 8 });    
-      document.getElementById("dish").value = "";    
-      document.getElementById("location").value = "";    
-    }    
-    
-    function togglePanel() {    
-      const panel = document.getElementById("form-container");    
-      const mapDiv = document.getElementById("map");    
-      const isHidden = panel.style.display === "none";    
-      panel.style.display = isHidden ? "block" : "none";    
-      mapDiv.classList.toggle("hide-zoom", !isHidden);    
-    }    
-  </script>    
-</body>    
+    .hide {
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      #form-container {
+        width: 90%;
+        left: 5%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+
+  <button id="toggle-panel"></button>
+
+  <div id="form-container">
+    <input type="text" id="dish" placeholder="Dish Name" /><br /><br />
+    <input type="text" id="location" placeholder="Location/City" /><br /><br />
+    <button onclick="addDish()">Add Dish</button>
+  </div>
+
+  <script>
+    mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN'; // Replace with your real token
+
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [77.209, 28.6139],
+      zoom: 3
+    });
+
+    const navControl = new mapboxgl.NavigationControl();
+    map.addControl(navControl, 'top-right');
+
+    const toggleBtn = document.getElementById("toggle-panel");
+    const formContainer = document.getElementById("form-container");
+
+    toggleBtn.addEventListener("click", () => {
+      if (formContainer.style.display === "none") {
+        formContainer.style.display = "block";
+        navControl._container.classList.add("hide");
+      } else {
+        formContainer.style.display = "none";
+        navControl._container.classList.remove("hide");
+      }
+    });
+
+    // Hide map zoom buttons if form is shown initially
+    map.on('load', () => {
+      navControl._container.classList.add("hide");
+    });
+
+    async function getCoordinates(place) {
+      const res = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(place)}.json?access_token=${mapboxgl.accessToken}`
+      );
+      const data = await res.json();
+      if (data.features.length > 0) {
+        return data.features[0].geometry.coordinates;
+      } else {
+        alert("Location not found!");
+        return null;
+      }
+    }
+
+    async function addDish() {
+      const dish = document.getElementById("dish").value;
+      const location = document.getElementById("location").value;
+      if (!dish || !location) {
+        alert("Please enter both dish and location.");
+        return;
+      }
+
+      const coords = await getCoordinates(location);
+      if (!coords) return;
+
+      const el = document.createElement('div');
+      el.className = 'marker-label';
+      el.textContent = dish;
+
+      new mapboxgl.Marker({ element: el })
+        .setLngLat(coords)
+        .setPopup(new mapboxgl.Popup().setHTML(`<b>${dish}</b><br>${location}`))
+        .addTo(map);
+
+      map.flyTo({ center: coords, zoom: 8 });
+
+      document.getElementById("dish").value = "";
+      document.getElementById("location").value = "";
+    }
+  </script>
+
+</body>
 </html>
