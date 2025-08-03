@@ -1,179 +1,149 @@
 <!DOCTYPE html><html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Taste Trek</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }html, body {
-  height: 100%;
-  font-family: Arial, sans-serif;
-}
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Taste Trek</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+      body {
+        margin: 0;
+        font-family: sans-serif;
+        overflow: hidden;
+      }
+      #map {
+        height: 100vh;
+        width: 100vw;
+      }
+      #panel {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 280px;
+        max-width: 100%;
+        background-color: #f7f7f7;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        padding: 10px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        transition: transform 0.3s ease;
+      }
+      #panel.hidden {
+        transform: translateX(-100%);
+      }
+      #toggleButton {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 1100;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .leaflet-control-zoom {
+        top: 80px !important; /* Push zoom buttons lower */
+        right: 10px !important;
+      }
+      label, select, input, button {
+        display: block;
+        margin-bottom: 8px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+      li {
+        margin-bottom: 10px;
+        background: #e2e2e2;
+        padding: 6px;
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      li span {
+        flex-grow: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="panel">
+      <h2>Taste Trek</h2>
+      <label for="dish">Dish Name:</label>
+      <input type="text" id="dish" /><label for="category">Category:</label>
+  <select id="category">
+    <option value="">Select</option>
+    <option value="Street Food">Street Food</option>
+    <option value="Traditional">Traditional</option>
+    <option value="Dessert">Dessert</option>
+    <option value="Modern">Modern</option>
+  </select>
 
-#map {
-  height: 100%;
-  width: 100%;
-}
+  <button onclick="addDish()">Add Dish</button>
+  <h3>Dish List</h3>
+  <ul id="dishList"></ul>
+</div>
+<button id="toggleButton" onclick="togglePanel()">Hide Panel</button>
 
-.form-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 300px;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 20px;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  transform: translateX(0);
-  transition: transform 0.3s ease;
-}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const map = L.map('map').setView([20.5937, 78.9629], 4);
 
-.form-container.hidden {
-  transform: translateX(-100%);
-}
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+  }).addTo(map);
 
-#toggle-btn {
-  position: fixed;
-  top: 20px;
-  left: 310px;
-  z-index: 1100;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 4px;
-}
+  const panel = document.getElementById('panel');
+  const toggleButton = document.getElementById('toggleButton');
+  let markers = [];
 
-@media (max-width: 768px) {
-  .form-container {
-    width: 80%;
+  function togglePanel() {
+    panel.classList.toggle('hidden');
+    toggleButton.innerText = panel.classList.contains('hidden') ? 'Show Panel' : 'Hide Panel';
   }
 
-  #toggle-btn {
-    left: auto;
-    right: 20px;
-  }
-}
+  map.on('click', function (e) {
+    const dishName = document.getElementById('dish').value;
+    const category = document.getElementById('category').value;
 
-label {
-  display: block;
-  margin-bottom: 10px;
-}
-
-input, select, button {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 15px;
-}
-
-ul {
-  list-style: none;
-  padding: 0;
-}
-
-li {
-  margin-bottom: 10px;
-  background: #f0f0f0;
-  padding: 5px 10px;
-  border-radius: 5px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.delete {
-  background: red;
-  color: white;
-  border: none;
-  padding: 5px;
-  cursor: pointer;
-}
-
-  </style>
-</head>
-<body>
-  <div class="form-container" id="formPanel">
-    <h3>Add Dish</h3>
-    <label>Name: <input type="text" id="dishName" /></label>
-    <label>Category: 
-      <select id="dishCategory">
-        <option>Snack</option>
-        <option>Main Course</option>
-        <option>Dessert</option>
-        <option>Beverage</option>
-      </select>
-    </label>
-    <button onclick="addDish()">Add Dish</button>
-    <ul id="dishList"></ul>
-  </div>
-  <button id="toggle-btn" onclick="togglePanel()">Hide Panel</button>
-  <div id="map"></div>  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>  <script>
-    const map = L.map('map').setView([20.5937, 78.9629], 5);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
-
-    let markers = JSON.parse(localStorage.getItem('markers')) || [];
-
-    const dishList = document.getElementById('dishList');
-
-    function renderDishes() {
-      dishList.innerHTML = '';
-      markers.forEach((m, i) => {
-        const li = document.createElement('li');
-        li.innerHTML = `${m.name} (${m.category}) <button class="delete" onclick="deleteDish(${i})">X</button>`;
-        dishList.appendChild(li);
-      });
+    if (!dishName || !category) {
+      alert('Please enter both dish name and category');
+      return;
     }
 
-    function addDish() {
-      const name = document.getElementById('dishName').value;
-      const category = document.getElementById('dishCategory').value;
-      if (!name || !category || !lastClickLatLng) return;
-      const marker = {
-        name,
-        category,
-        lat: lastClickLatLng.lat,
-        lng: lastClickLatLng.lng
-      };
-      markers.push(marker);
-      localStorage.setItem('markers', JSON.stringify(markers));
-      L.marker([marker.lat, marker.lng]).addTo(map)
-        .bindPopup(`${marker.name} (${marker.category})`);
-      renderDishes();
-    }
+    const marker = L.marker(e.latlng).addTo(map);
+    marker.bindPopup(`<b>${dishName}</b><br>${category}`).openPopup();
 
-    function deleteDish(index) {
-      markers.splice(index, 1);
-      localStorage.setItem('markers', JSON.stringify(markers));
-      location.reload();
-    }
+    markers.push({ marker, dishName });
 
-    let lastClickLatLng = null;
+    const li = document.createElement('li');
+    const span = document.createElement('span');
+    span.innerText = `${dishName} (${category})`;
 
-    map.on('click', function(e) {
-      lastClickLatLng = e.latlng;
-    });
+    const removeBtn = document.createElement('button');
+    removeBtn.innerText = 'Remove';
+    removeBtn.onclick = function () {
+      map.removeLayer(marker);
+      li.remove();
+    };
 
-    markers.forEach(m => {
-      L.marker([m.lat, m.lng]).addTo(map)
-        .bindPopup(`${m.name} (${m.category})`);
-    });
+    li.appendChild(span);
+    li.appendChild(removeBtn);
 
-    renderDishes();
+    document.getElementById('dishList').appendChild(li);
 
-    function togglePanel() {
-      const panel = document.getElementById('formPanel');
-      const btn = document.getElementById('toggle-btn');
-      panel.classList.toggle('hidden');
-      btn.textContent = panel.classList.contains('hidden') ? 'Show Panel' : 'Hide Panel';
-    }
-  </script></body>
-</html>    
+    document.getElementById('dish').value = '';
+    document.getElementById('category').value = '';
+  });
+</script>
+
+  </body>
+</html>
